@@ -1,6 +1,7 @@
 import ee
 import geemap
 import os
+from pathlib import Path
 from datetime import datetime, timezone
 
 from .SceneMetadata import SceneMetadata
@@ -25,22 +26,46 @@ class GEELoader:
                 "min": 0,
                 "max": 3000,
                 "dimensions": 256,
-                "format": "png"
+                "format": "png",
             }
         }
 
-    def fetch_previews(self, start_date: str, end_date: str, region: list[float], source: list[str], *args) -> list[SceneMetadata]:
+        self.bands = {
+            "Sentinel-2": ["B2", "B3", "B4", "B8", "B11", "B12"],
+            "Sentinel-1": ["VV", "VH"],
+        }
+
+    def download_scenes(self, scenes: list[SceneMetadata], aoi: ee.Geometry, output_dir = "data/raw", scale: int = 20) -> None:
+        out = Path(output_dir)
+        out.mkdir(parents=True, exist_ok=True)
+        for scene in scenes:
+            clean_date = scene.timestamp.replace(":", "").replace(" ", "_").replace("-", "")
+            orbit_suffix = f"_{scene.orbit_pass}" if scene.sensor == "Sentinel-1" else ""
+            filename = out / f"{scene.sensor}_{clean_date}{orbit_suffix}.tif"
+            self.download_scene(scene, aoi, str(filename), scale)
+
+    def download_scene(self, scene: SceneMetadata, aoi: ee.Geometry, filename: str, scale: int = 20) -> None:
+        export_img = scene.ee_image.select(self.bands[scene.sensor])
+        print(f"Downloading {filename}")
+        geemap.ee_export_image(
+            ee_object=export_img,
+            filename=filename,
+            scale=scale,
+            region=aoi,
+            file_per_band=False
+        )
+
+    def fetch_previews(self, start_date: str, end_date: str, aoi: ee.Geometry, source: list[str], **kwargs) -> list[SceneMetadata]:
         if not source:
             return []
 
         results: list[SceneMetadata] = []
-        aoi = ee.Geometry.Rectangle(region)
         for src in source:
             handler = self.handlers.get(src)
             if not handler:
                 raise ValueError(f"Unsupported source: {src}")
 
-            results.extend(handler(aoi, start_date, end_date, *args))
+            results.extend(handler(aoi, start_date, end_date, **kwargs))
 
         return results
             
@@ -56,7 +81,7 @@ class GEELoader:
 
         return self._loop_collection(collection, aoi, "Sentinel-2")
 
-    def fetch_sentinel1_previews(self, aoi: ee.Geometry, start_date: str, end_date: str, *args) -> list[SceneMetadata]:
+    def fetch_sentinel1_previews(self, aoi: ee.Geometry, start_date: str, end_date: str, **kwargs) -> list[SceneMetadata]:
         collection = (
             ee.ImageCollection("COPERNICUS/S1_GRD")
             .filterBounds(aoi)
