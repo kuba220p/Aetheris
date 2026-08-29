@@ -1,12 +1,11 @@
 import ee
 import geemap
-import os
 from pathlib import Path
 from datetime import datetime, timezone
 
-from .SceneMetadata import SceneMetadata
+from .scene_metadata import SceneMetadata
 
-class GEELoader:
+class Loader:
     def __init__(self, project_id: str):
         ee.Initialize(project=project_id)
         self.handlers = {
