@@ -2,6 +2,7 @@ from src.GEELoader import gee_loader
 from src.ui.button import Button
 from src.ui.canvas import MapCanvas
 from src.ui.toolbar import ToolBar
+from src.FileManager import file_manager
 
 from PySide6.QtWidgets import QMainWindow, QGridLayout, QWidget
 from PySide6.QtCore import Qt
@@ -14,6 +15,7 @@ class MainWindow(QMainWindow):
 
         self.loader = gee_loader.Loader(project_id)
         self._create_toolbar()
+        self._create_file_manager()
 
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -42,8 +44,11 @@ class MainWindow(QMainWindow):
                 "Export": self.export_file,
             })
 
+    def _create_file_manager(self) -> None:
+        self.file_manager = file_manager.FileManager()
+
     def open_file(self) -> None:
-        print("opening file...")
+        self.file_manager.open()
 
     def export_file(self) -> None:
         print("exporting file...")
