@@ -12,7 +12,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Aetheris")
         self.resize(1280, 800)
-
+        self.canvas = MapCanvas()
         self.loader = gee_loader.Loader(project_id)
         self._create_toolbar()
         self._create_file_manager()
@@ -26,7 +26,7 @@ class MainWindow(QMainWindow):
         left_layout = QGridLayout()
 
 
-        self.canvas = MapCanvas()
+        
 
         left_layout.addWidget(self.canvas)
 
@@ -46,6 +46,7 @@ class MainWindow(QMainWindow):
 
     def _create_file_manager(self) -> None:
         self.file_manager = file_manager.FileManager()
+        self.file_manager.fileSelected.connect(self.canvas.load_img_bands)
 
     def open_file(self) -> None:
         self.file_manager.open()

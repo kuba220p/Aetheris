@@ -1,5 +1,6 @@
 import ee
 import geemap
+import rasterio
 from pathlib import Path
 from datetime import datetime, timezone
 
@@ -44,7 +45,8 @@ class Loader:
             self.download_scene(scene, aoi, str(filename), scale)
 
     def download_scene(self, scene: SceneMetadata, aoi: ee.Geometry, filename: str, scale: int = 20) -> None:
-        export_img = scene.ee_image.select(self.bands[scene.sensor])
+        bands = self.bands[scene.sensor]
+        export_img = scene.ee_image.select(bands)
         print(f"Downloading {filename}")
         geemap.ee_export_image(
             ee_object=export_img,
@@ -53,6 +55,18 @@ class Loader:
             region=aoi,
             file_per_band=False
         )
+        self.save_metadata(filename, scene, bands)
+
+    def save_metadata(self, filename: str, scene: SceneMetadata, bands: list[str]) -> None:
+        with rasterio.open(filename, "r+") as img:
+            img.descriptions = tuple(bands)
+            img.update_tags(
+                SENSOR=scene.sensor,
+                SCENE_ID=scene.scene_id,
+                TIMESTAMP=scene.timestamp,
+                ORBIT_PASS=scene.orbit_pass,
+                CLOUD_COVERAGE=scene.cloud_coverage
+            )
 
     def fetch_previews(self, start_date: str, end_date: str, aoi: ee.Geometry, source: list[str], **kwargs) -> list[SceneMetadata]:
         if not source:
