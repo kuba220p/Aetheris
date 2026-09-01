@@ -5,7 +5,11 @@ import re
 
 from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QWidget
 from PySide6.QtGui import QPixmap, QImage, QPainter
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal, QObject
+
+class CanvasSignals(QObject):
+    fileLoaded = Signal(str)
+    bandsLoaded = Signal(object)
 
 class MapCanvas(QGraphicsView):
     def __init__(
@@ -26,9 +30,11 @@ class MapCanvas(QGraphicsView):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
+        self.signals = CanvasSignals()
         self._images: dict[str, dict[str, QImage]] = {}
 
     def load_img_bands(self, img_path: str) -> None:
+        print(img_path)
         img: rasterio.DatasetReader
         with rasterio.open(img_path, mode="r") as img:
             self._images[img_path] = {}
@@ -36,6 +42,13 @@ class MapCanvas(QGraphicsView):
                 self.add_band(img_path, desc, self.make_qimage(img.read(index)))
 
             self.show_img(self.get_band(img_path, img.descriptions[0]))
+
+        self.emit_file(img_path)
+
+    def emit_file(self, img_path: str) -> None:
+        bands = list(self._images.get(img_path, {}).keys())
+        self.signals.fileLoaded.emit(img_path)
+        self.signals.bandsLoaded.emit(bands)
 
     def show_img(self, qimage: QImage) -> None:
         if not qimage:
@@ -60,3 +73,14 @@ class MapCanvas(QGraphicsView):
         arr_contigous = np.ascontiguousarray(arr_8bit)
         h, w = arr_contigous.shape
         return QImage(arr_contigous.data, w, h, w, QImage.Format.Format_Grayscale8).copy()
+
+    def change_file(self, filename: str) -> None:
+        bands = list(self._images.get(filename, {}).keys())
+        if bands:
+            self.show_img(self.get_band(filename, bands[0]))
+            self.signals.bandsLoaded.emit(bands)
+
+    def change_band(self, filename: str, band: str) -> None:
+        qimage = self.get_band(filename, band)
+        if qimage is not None:
+            self.show_img(qimage)

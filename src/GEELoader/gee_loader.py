@@ -68,7 +68,7 @@ class Loader:
                 CLOUD_COVERAGE=scene.cloud_coverage
             )
 
-    def fetch_previews(self, start_date: str, end_date: str, aoi: ee.Geometry, source: list[str], **kwargs) -> list[SceneMetadata]:
+    def fetch_previews(self, start_date: str, end_date: str, aoi: ee.Geometry.Rectangle, source: list[str], **kwargs) -> list[SceneMetadata]:
         if not source:
             return []
 
@@ -78,6 +78,7 @@ class Loader:
             if not handler:
                 raise ValueError(f"Unsupported source: {src}")
 
+            print(f"fetching preview for {src}")
             results.extend(handler(aoi, start_date, end_date, **kwargs))
 
         return results
